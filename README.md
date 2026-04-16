@@ -52,4 +52,4 @@ g++ ./src/simulator.cpp -o tamilator
 
 ----------
 
-It's for personal use but you can use it if you want. Though I'm trying to make it into a installable software. But for now I'll focus on upgrading it ¯\\_(ツ)_/¯
+It's for personal use but you can use it if you want. Though I'm trying to make it into a installable software. But for now I'll focus on upgrading it ¯\\\_(ツ)\_/¯
