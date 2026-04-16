@@ -754,11 +754,11 @@ int main(int argc, char **argv)
             std::string clock_text;
             if (mapc.clk_connected)
             {
-                clock_text = "Clock: 1 kHz (500 us)";
+                clock_text = "Clock: 1 kHz";
             }
             else
             {
-                clock_text = "Clock: 1 kHz (500 us) (Disabled)";
+                clock_text = "Clock: 1 kHz (Disabled)";
             }
             draw_text(ren, 730, 12, clock_text, (SDL_Color){245, 245, 245, 255});
 
