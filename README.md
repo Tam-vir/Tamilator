@@ -33,3 +33,23 @@ Tamilator is a FPGA simulator built with C++ that can graphically simulate FPGA 
     "clock": "clock"
 }
 ```
+### Simulation of a counter design
+![Counter Simulation Image](/images/image.png)
+
+### Dependencies
+
+1. Verilator
+2. ImGUI with SDL2 backend
+3. SDL2
+4. Nlohmann JSON library
+
+### Build and Run
+```bash
+g++ ./src/simulator.cpp -o tamilator
+./tamilator top.v
+```
+**Note:** `top.v` is the top module of your verilog design. Currently it must be named top.v
+
+----------
+
+It's for personal use but you can use it if you want. Though I'm trying to make it into a installable software. But for now I'll focus on upgrading it ¯\_(ツ)_/¯

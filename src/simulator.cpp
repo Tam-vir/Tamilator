@@ -167,19 +167,7 @@ int main(int argc, char **argv)
     {
         std::cout << "   Creating default constraints.json\n";
         std::ofstream default_json(constraints_path);
-        default_json << R"({
-  "inputs": {
-    "BTN0": "btn0",
-    "BTN1": "btn1",
-    "BTN2": "btn2"
-  },
-  "outputs": {
-    "LED0": "led0",
-    "LED1": "led1",
-    "LED2": "led2",
-    "LED3": "led3"
-  }
-})";
+        default_json << R"({})";
         default_json.close();
     }
 
