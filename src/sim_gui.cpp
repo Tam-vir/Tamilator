@@ -28,19 +28,15 @@
 
 using json = nlohmann::json;
 
-// Verilator
 Vtop *top;
 
-// Global simulation control
 bool simulation_running = false;
 long long total_clock_cycles = 0;
 
-// File dialog control
 std::atomic<bool> file_dialog_open(false);
 std::atomic<bool> file_selected(false);
 std::string pending_filename;
 
-// Memory Manager Class
 class MemoryManager
 {
 private:
@@ -126,13 +122,11 @@ public:
     }
 };
 
-// Async file dialog
 void openFileDialogAsync()
 {
     file_dialog_open = true;
     std::string filename;
 
-    // Use zenity for file dialog
     FILE *pipe = popen("zenity --file-selection --title='Select Hex File' --file-filter='Hex files | *.hex' --file-filter='Text files | *.txt' 2>/dev/null", "r");
 
     if (pipe)
@@ -167,7 +161,6 @@ union SignalPtr
     SignalPtr(IData *p) : idata(p) {}
 };
 
-// FPGA STATE
 struct FPGAState
 {
     bool btn[8] = {0};
@@ -179,10 +172,8 @@ struct FPGAState
 
 FPGAState fpga;
 
-// Forward declaration
 void add_available_signals(std::unordered_map<std::string, SignalPtr> &signal_db, Vtop *top);
 
-// Memory Display Configuration
 struct MemoryDisplay
 {
     static constexpr int CELL_SIZE = 30;
@@ -218,7 +209,6 @@ struct MemoryDisplay
     }
 };
 
-// SIGNAL MAP
 struct SignalMap
 {
     Vtop *top;
@@ -426,11 +416,6 @@ struct SignalMap
             {
                 memory_conn.addr_ptr = it->second;
                 memory_conn.connected = true;
-                std::cout << "  ✓ Memory address bus connected: " << memory_conn.addr_signal_name << std::endl;
-            }
-            else
-            {
-                std::cout << "  ✗ Memory address bus not found: " << memory_conn.addr_signal_name << std::endl;
             }
         }
 
@@ -440,11 +425,6 @@ struct SignalMap
             if (it != signal_db.end() && it->second.ptr != nullptr)
             {
                 memory_conn.data_ptr = it->second;
-                std::cout << "  ✓ Memory data bus connected: " << memory_conn.data_signal_name << std::endl;
-            }
-            else
-            {
-                std::cout << "  ✗ Memory data bus not found: " << memory_conn.data_signal_name << std::endl;
             }
         }
 
@@ -454,7 +434,6 @@ struct SignalMap
             if (it != signal_db.end() && it->second.ptr != nullptr)
             {
                 memory_conn.we_ptr = it->second;
-                std::cout << "  ✓ Memory write enable connected: " << memory_conn.we_signal_name << std::endl;
             }
         }
 
@@ -464,7 +443,6 @@ struct SignalMap
             if (it != signal_db.end() && it->second.ptr != nullptr)
             {
                 memory_conn.re_ptr = it->second;
-                std::cout << "  ✓ Memory read enable connected: " << memory_conn.re_signal_name << std::endl;
             }
         }
     }
@@ -589,7 +567,6 @@ MemoryDisplay mem_display;
 
 #include "signal_checks.h"
 
-// LOAD JSON
 json load_json(const std::string &file)
 {
     std::ifstream f(file);
@@ -603,7 +580,6 @@ json load_json(const std::string &file)
     return j;
 }
 
-// SIM STEP
 void step()
 {
     if (simulation_running)
@@ -614,49 +590,35 @@ void step()
     }
 }
 
-// Reset simulation by recreating the Verilator instance
 void reset_simulation()
 {
-    // Save memory contents
     std::vector<uint8_t> saved_memory;
     if (memory.isEnabled())
     {
         saved_memory.resize(memory.getSize());
         memcpy(saved_memory.data(), memory.getData(), memory.getSize());
-        std::cout << "Saving memory contents (" << saved_memory.size() << " bytes)..." << std::endl;
     }
 
-    // Delete and recreate the Verilator instance
     delete top;
     top = new Vtop;
     mapc.top = top;
 
-    // Rebuild signal connections
     json cfg = load_json("constraints.json");
     mapc.load_and_build(cfg);
     mapc.resolve();
 
-    // Restore memory contents
     if (memory.isEnabled() && !saved_memory.empty())
     {
         memcpy(memory.getData(), saved_memory.data(), saved_memory.size());
-        std::cout << "Memory restored (" << saved_memory.size() << " bytes)" << std::endl;
     }
 
-    // Reset FPGA state (buttons, LEDs, dipswitches, etc.)
     mapc.reset_fpga_state();
-
-    // Reset clock cycle counter
     total_clock_cycles = 0;
 
-    // Run one evaluation to initialize the new instance
     top->eval();
     mapc.read();
-
-    std::cout << "Simulation reset complete - Verilator instance recreated, memory preserved" << std::endl;
 }
 
-// TEXT RENDERING HELPERS
 TTF_Font *font = nullptr;
 
 void init_font()
@@ -665,8 +627,7 @@ void init_font()
     font = TTF_OpenFont("./assets/DejaVuSans.ttf", 12);
     if (!font)
     {
-        std::cerr << "Warning: Failed to load font, using fallback rendering\n";
-        return;
+        std::cerr << "Warning: Failed to load font\n";
     }
 }
 
@@ -687,7 +648,6 @@ void draw_text(SDL_Renderer *renderer, int x, int y, const std::string &text, SD
     SDL_DestroyTexture(texture);
 }
 
-// CLOCK BLINKER DRAW
 void draw_clock_blinker(SDL_Renderer *r, int x, int y, bool state, bool connected)
 {
     const int blinker_size = 6;
@@ -717,7 +677,6 @@ void draw_clock_blinker(SDL_Renderer *r, int x, int y, bool state, bool connecte
     SDL_RenderDrawRect(r, &blinker);
 }
 
-// RUN/STOP BUTTONS DRAW
 void draw_run_button(SDL_Renderer *renderer, int x, int y, bool hover, bool running)
 {
     int width = 80;
@@ -758,7 +717,6 @@ void draw_reset_button(SDL_Renderer *renderer, int x, int y, bool hover)
     draw_text(renderer, x + 15, y + 8, "RESET", (SDL_Color){255, 255, 255, 255});
 }
 
-// DIPSWITCH DRAW
 void draw_dipswitch(SDL_Renderer *r, int x, int y, uint8_t value, bool connected, const std::string &label, bool enabled)
 {
     const int switch_width = 8;
@@ -845,7 +803,6 @@ void draw_dipswitch(SDL_Renderer *r, int x, int y, uint8_t value, bool connected
     draw_text(r, x + 130, y + 8, value_str, (SDL_Color){100, 100, 120, 255});
 }
 
-// BAR GRAPH DRAW
 void draw_bar_graph(SDL_Renderer *r, int x, int y, int value, bool connected, const std::string &label)
 {
     const int num_leds = 8;
@@ -920,7 +877,6 @@ void draw_bar_graph(SDL_Renderer *r, int x, int y, int value, bool connected, co
     }
 }
 
-// LED DRAW
 void draw_led(SDL_Renderer *r, int x, int y, bool on, bool connected)
 {
     const int led_width = 12;
@@ -959,7 +915,6 @@ void draw_led(SDL_Renderer *r, int x, int y, bool on, bool connected)
     SDL_RenderDrawRect(r, &led);
 }
 
-// BUTTON DRAW
 void draw_button(SDL_Renderer *ren, int x, int y, int w, int h, bool pressed, bool connected, int btn_num, bool enabled)
 {
     if (!connected || !enabled)
@@ -984,13 +939,11 @@ void draw_button(SDL_Renderer *ren, int x, int y, int w, int h, bool pressed, bo
     }
 }
 
-// DRAW SECTION HEADER
 void draw_section_header(SDL_Renderer *r, int x, int y, const std::string &title)
 {
     draw_text(r, x - 35, y - 15, title, (SDL_Color){80, 80, 100, 255});
 }
 
-// MEMORY GRID DRAW
 void draw_memory_grid(SDL_Renderer *renderer, MemoryManager &memory, MemoryDisplay &display)
 {
     if (!display.show_memory)
@@ -1149,7 +1102,6 @@ void draw_clear_button(SDL_Renderer *renderer, int x, int y, bool hover, bool en
     draw_text(renderer, x + 15, y + 8, "Clear", text_color);
 }
 
-// MAIN
 int main(int argc, char **argv)
 {
     Verilated::commandArgs(argc, argv);
@@ -1163,11 +1115,6 @@ int main(int argc, char **argv)
     if (mapc.memory_conn.connected)
     {
         memory.setEnabled(true);
-        std::cout << "Memory enabled (connected to FPGA)" << std::endl;
-    }
-    else
-    {
-        std::cout << "Memory disabled (not connected in constraints)" << std::endl;
     }
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -1266,7 +1213,6 @@ int main(int argc, char **argv)
             }
         }
 
-        // Check if file was selected in the background thread
         if (file_selected)
         {
             memory.loadHexFile(pending_filename);
@@ -1320,12 +1266,7 @@ int main(int argc, char **argv)
                     simulation_running = !simulation_running;
                     if (simulation_running)
                     {
-                        std::cout << "Simulation started" << std::endl;
                         last_clock_time = std::chrono::steady_clock::now();
-                    }
-                    else
-                    {
-                        std::cout << "Simulation stopped" << std::endl;
                     }
                 }
 
@@ -1339,7 +1280,6 @@ int main(int argc, char **argv)
                     my >= load_btn_rect.y && my <= load_btn_rect.y + load_btn_rect.h &&
                     !simulation_running && memory.isEnabled() && !file_dialog_open)
                 {
-                    // Start file dialog in a separate thread (non-blocking)
                     std::thread file_thread(openFileDialogAsync);
                     file_thread.detach();
                 }
@@ -1349,7 +1289,6 @@ int main(int argc, char **argv)
                     !simulation_running && memory.isEnabled())
                 {
                     memory.clear();
-                    std::cout << "Memory cleared" << std::endl;
                 }
 
                 if (simulation_running)
@@ -1456,7 +1395,7 @@ int main(int argc, char **argv)
             }
             draw_text(ren, 730, 12, clock_text, (SDL_Color){245, 245, 245, 255});
 
-            std::string status_text = simulation_running ? "● RUNNING" : "■ STOPPED";
+            std::string status_text = simulation_running ? "RUNNING" : "STOPPED";
             SDL_Color status_color = simulation_running ? (SDL_Color){100, 255, 100, 255} : (SDL_Color){255, 100, 100, 255};
             draw_text(ren, 900, 12, status_text, status_color);
 

@@ -7,9 +7,6 @@ import re
 def generate_signal_checks(constraints_file='constraints.json', output_file='signal_checks.h'):
     """Generate C++ signal checks for signals in constraints.json"""
     
-    # Note: SignalPtr is defined in the main cpp file, not here
-    # This file only generates the signal detection code
-    
     if not os.path.exists(constraints_file):
         print(f"Warning: {constraints_file} not found", file=sys.stderr)
         with open(output_file, 'w') as f:
@@ -21,17 +18,14 @@ def generate_signal_checks(constraints_file='constraints.json', output_file='sig
             f.write("#include <cstdint>\n\n")
             f.write("// SignalPtr is defined in main cpp file\n")
             f.write("void add_available_signals(std::unordered_map<std::string, SignalPtr>& signal_db, Vtop* top) {\n")
-            f.write('    std::cout << "\\n=== No constraints.json ===\\n" << std::endl;\n')
             f.write("}\n")
         return
     
     with open(constraints_file, 'r') as f:
         constraints = json.load(f)
     
-    # Collect all unique Verilog signals from constraints
     signals = set()
     
-    # Regular signals (inputs and outputs)
     for sig in constraints.get("inputs", {}).values():
         base_name = re.sub(r'\[.*\]', '', sig)
         signals.add(base_name)
@@ -40,19 +34,14 @@ def generate_signal_checks(constraints_file='constraints.json', output_file='sig
         base_name = re.sub(r'\[.*\]', '', sig)
         signals.add(base_name)
     
-    # Bar graph signals
     for display_name, sig in constraints.get("bargraphs", {}).items():
         base_name = re.sub(r'\[.*\]', '', sig)
         signals.add(base_name)
-        print(f"Added bargraph signal: {base_name}")
     
-    # Dipswitch signals
     for display_name, sig in constraints.get("dipswitches", {}).items():
         base_name = re.sub(r'\[.*\]', '', sig)
         signals.add(base_name)
-        print(f"Added dipswitch signal: {base_name}")
     
-    # Memory signals
     if "memory" in constraints:
         mem = constraints["memory"]
         for sig_name in ["address_bus", "data_bus", "write_enable", "read_enable"]:
@@ -60,14 +49,11 @@ def generate_signal_checks(constraints_file='constraints.json', output_file='sig
                 sig = mem[sig_name]
                 base_name = re.sub(r'\[.*\]', '', sig)
                 signals.add(base_name)
-                print(f"Added memory {sig_name} signal: {base_name}")
     
-    # Clock signal
     if "clock" in constraints:
         clk_signal = constraints["clock"]
         base_name = re.sub(r'\[.*\]', '', clk_signal)
         signals.add(base_name)
-        print(f"Added clock signal: {base_name}")
     
     if not signals:
         print("No signals found in constraints.json", file=sys.stderr)
@@ -80,7 +66,6 @@ def generate_signal_checks(constraints_file='constraints.json', output_file='sig
             f.write("#include <cstdint>\n\n")
             f.write("// SignalPtr is defined in main cpp file\n")
             f.write("void add_available_signals(std::unordered_map<std::string, SignalPtr>& signal_db, Vtop* top) {\n")
-            f.write('    std::cout << "\\n=== No signals in constraints ===\\n" << std::endl;\n')
             f.write("}\n")
         return
     
@@ -95,7 +80,6 @@ def generate_signal_checks(constraints_file='constraints.json', output_file='sig
         f.write("#include <cstdint>\n\n")
         f.write("// Note: SignalPtr is defined in the main cpp file\n\n")
         
-        # Generate has_* templates for each signal
         for sig in sorted(signals):
             safe_sig = sig.replace('[', '_').replace(']', '_').replace('.', '_')
             f.write(f'template<typename T, typename = void>\n')
@@ -104,22 +88,14 @@ def generate_signal_checks(constraints_file='constraints.json', output_file='sig
             f.write(f'struct has_{safe_sig}<T, std::void_t<decltype(std::declval<T>().{sig})>> : std::true_type {{}};\n\n')
         
         f.write("void add_available_signals(std::unordered_map<std::string, SignalPtr>& signal_db, Vtop* top) {\n")
-        f.write('    std::cout << "\\n=== Detecting signals from constraints ===\\n" << std::endl;\n\n')
         
-        # Generate conditional addition for each signal
         for sig in sorted(signals):
             safe_sig = sig.replace('[', '_').replace(']', '_').replace('.', '_')
             f.write(f'    if constexpr (has_{safe_sig}<decltype(*top)>::value) {{\n')
             f.write(f'        signal_db["{sig}"] = SignalPtr(&top->{sig});\n')
-            f.write(f'        std::cout << "  ✓ Found: {sig}" << std::endl;\n')
-            f.write(f'    }} else {{\n')
-            f.write(f'        std::cout << "  ✗ Missing: {sig}" << std::endl;\n')
             f.write(f'    }}\n\n')
         
         f.write("}\n")
-    
-    print(f"✅ Generated checks for {len(signals)} signals in {output_file}")
-    print(f"   Signals: {', '.join(sorted(signals))}")
 
 if __name__ == "__main__":
     generate_signal_checks()
